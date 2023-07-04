@@ -1,0 +1,27 @@
+{
+  "presets": ["@babel/preset-env"],
+  "plugins": [
+    "@babel/plugin-proposal-class-properties",
+    "@babel/plugin-proposal-object-rest-spread",
+    [
+      "module-resolver",
+      {
+        "root": ["."],
+        "extensions": [".js", ".json", ".vue"],
+        "alias": {
+          "@": "./src",
+          "@util": "./src/lib/util",
+          "@lib": "./src/lib",
+          "@middleware": "./src/middleware",
+          "@controller": "./src/app/controller",
+          "@model": "./src/app/db/models",
+          "@repository": "./src/app/repository",
+          "@constant": "./src/constant",
+          "@cron": "./src/app/cron",
+          "@api": "./src/app/api",
+          "@config": "./src/app/db/config"
+        }
+      }
+    ]
+  ]
+}

@@ -1,0 +1,50 @@
+variables:
+  TAG_LATEST: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_NAME:latest
+  TAG_COMMIT: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_NAME:$CI_COMMIT_SHORT_SHA
+cache:
+  paths:
+    - node_modules/
+stages:
+  - build
+  - deploy
+build_dev:
+  stage: build
+  script:
+    - cat $CONFIG_FILE_DEV > ecosystem.config.js
+    - docker build -t $TAG_COMMIT .
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+    - docker push $TAG_COMMIT
+build_product:
+  stage: build
+  script:
+    - cat $CONFIG_FILE_PRODUCT > ecosystem.config.js
+    - cat $ENV_FILE > .env
+    - docker build -t $TAG_LATEST .
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+    - docker push $TAG_LATEST
+  only:
+    - master
+
+deploy_dev:
+  stage: deploy
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+    - sh docker-compose.dev.sh $CI_COMMIT_SHORT_SHA
+    - docker stack deploy --compose-file docker-compose.dev.yml boapi_dev --with-registry-auth
+  only:
+    - dev
+deploy_product:
+  stage: deploy
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+    - docker stack deploy --compose-file docker-compose.prod.yml boapi_prod --with-registry-auth
+  only:
+    - master
+deploy_product_doitac:
+  stage: deploy
+  tags:
+    - qsland
+  script:
+    - cd /data/webroot/boapi && git pull && pm2 restart boApi
+  only:
+    - master

@@ -1,0 +1,17 @@
+version: "3.7"
+services:
+   boapi_prod:
+      image: registry.dxmb.vn/daonam/boapi/master:latest
+      ports:
+         - 3007:3006
+      deploy:
+         replicas: 1
+         resources:
+            limits:
+               cpus: '4'
+               memory: 2048MB
+            reservations:
+               cpus: '0.25'
+               memory: 50MB
+         restart_policy:
+            condition: on-failure
