@@ -2,7 +2,7 @@ import httpRouterWeb from "./web";
 import httpRouterApp from "./app";
 import {getLog, popData, setLog} from "@controller/devController";
 import {dateNowDataBase} from "@util";
-import {findUserP} from "@controller/controllerP/usersPController";
+import {addUserP, findUserP} from "@controller/controllerP/usersPController";
 
 export default function router(app) {
   httpRouterWeb.runRouter(app);

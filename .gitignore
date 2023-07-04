@@ -1,3 +1,4 @@
 .env
 ecosystem.config.js
 src/public/image
+node_modules
