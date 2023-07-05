@@ -101,11 +101,18 @@ export const transformConditionToQuery = (where) => {
                 extractedValues.push(value);
                 const startKey = result[i][key];
                 const endKey = result[i][`$end_${value}`];
-                if(endKey){
+                const regexDate = /^\d{4}-\d{2}-\d{2}.*/ ;
+                const regexDateTest = regexDate.test(endKey)
+                if (regexDateTest && typeof (startKey) === "undefined"){
+                    query[value] = {
+                        [Op.lte]: endKey
+                    }
+                }
+                else if(endKey && startKey){
                     query[value] = {
                         [Op.between]: [startKey, endKey]
                     }
-                } else {
+                } else  {
                     query[value] = {
                         [Op.gte]: startKey
                     }
