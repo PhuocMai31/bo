@@ -160,7 +160,7 @@ class ModelBase {
      * @param order {[]|any}
      * @return {Promise<any>}
      */
-    static findItem(where, transaction , attr = false, order = false) {
+    static async findItem(where, transaction , attr = false, order = false) {
         const opts = {where: {deleted_at: null, ...where}, raw: true, attributes: attr, order};
         if (transaction) opts.transaction = transaction;
         if (where.deleted_at === false) delete where.deleted_at
@@ -169,7 +169,21 @@ class ModelBase {
                 this.model.findOne(opts)
             );
         }
-
+        let result = await client.get(`${this.table_name}_id`)
+        if(!result){
+            const expireSecond = 5
+            let data = await this.model.findOne({where})
+            if(data.id !== where.id){
+                data = null
+            }
+            console.log(data,333)
+            const jsonValue = JSON.stringify(data)
+            await client.set(`${this.table_name}_id`, jsonValue)
+            await client.expire(`${this.table_name}_id`, expireSecond)
+            return data
+        }
+        const dataInCache = await client.get(`${this.table_name}_id`)
+        return JSON.parse(dataInCache)
         return this.model.findOne(opts);
     }
 

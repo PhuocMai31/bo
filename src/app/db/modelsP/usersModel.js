@@ -109,7 +109,6 @@ export  const getDetailUserMd = ( body)=> {
 
 export const upDateUserMd = (dataUpdate) => {
     const userUpdated = UsersModel.updateDataCache(dataUpdate)
-
 }
 
 export  const findUser = (body)=> {
