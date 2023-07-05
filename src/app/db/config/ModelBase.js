@@ -2,6 +2,8 @@ import {sequelize} from "./main";
 import {dateNowDataBase, objIsEmpty, validNumber} from "@util";
 import {Op} from "sequelize";
 import {cacheRedis, rdDel} from "@lib";
+import {client} from "@config/redisConnect";
+import {lowerFirst} from "lodash/string";
 
 class ModelBase {
     constructor() {
@@ -158,7 +160,7 @@ class ModelBase {
      * @param order {[]|any}
      * @return {Promise<any>}
      */
-    static findItem(where, transaction = false, attr = false, order = false) {
+    static findItem(where, transaction , attr = false, order = false) {
         const opts = {where: {deleted_at: null, ...where}, raw: true, attributes: attr, order};
         if (transaction) opts.transaction = transaction;
         if (where.deleted_at === false) delete where.deleted_at
@@ -167,7 +169,49 @@ class ModelBase {
                 this.model.findOne(opts)
             );
         }
+
         return this.model.findOne(opts);
+    }
+
+    static async findIDtoCache(where){
+        let result = await client.get(`${this.table_name}_id`)
+        if(!result){
+            const expireSecond = 5
+            let data = await this.model.findOne({where})
+            if(data.id !== where.id){
+                data = null
+            }
+            console.log(data,333)
+            const jsonValue = JSON.stringify(data)
+            await client.set(`${this.table_name}_id`, jsonValue)
+            await client.expire(`${this.table_name}_id`, expireSecond)
+            return data
+        }
+        const dataInCache = await client.get(`${this.table_name}_id`)
+        return JSON.parse(dataInCache)
+    }
+
+    static async updateDataCache(dataUpdate) {
+        console.log(dataUpdate)
+        // let result = await client.get(`${this.table_name}_id`)
+        // if (result){
+        //     console.log(result)
+            dataUpdate.updated_at = new Date()
+            if (dataUpdate.delete_at) dataUpdate.delete_at = null
+            console.log(dataUpdate,777)
+            await this.model.update(dataUpdate,
+                {
+                    where: {id: dataUpdate.id},
+                }
+            );
+            const userUpdated = await this.model.findOne({
+                where: {id: dataUpdate.id},
+            })
+            const expireSecond = 5
+            await client.set(`${this.table_name}_id`, JSON.stringify(userUpdated))
+            await client.expire(`${this.table_name}_id`, expireSecond)
+            return userUpdated
+        // }
     }
 
     /**
@@ -258,6 +302,8 @@ class ModelBase {
     static clearCache = (table_name, id) => {
         rdDel(table_name + "_" + id);
     };
+
+
 }
 
 export {ModelBase};

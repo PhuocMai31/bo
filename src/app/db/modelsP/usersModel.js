@@ -1,13 +1,14 @@
 import {ModelBase} from "@config/ModelBase";
 import {
     findDataWithFieldandBetween,
-    findDataWithTime,
+    findDataWithTime, findIDtoCache,
     transformConditionToQuery
 } from "@controller/controllerP/function";
 import req from "express/lib/request";
 import {Op} from "sequelize";
 import Bo_v2_work_group from "@model/bo_v2_work_group";
 import Bo_v2_user_info from "@model/bo_v2_user_info";
+import {res} from "@util";
 
 class UsersModel extends ModelBase{
     id
@@ -26,7 +27,7 @@ UsersModel.init("users",{
     created_at: { type: "DATETIME" },
     updated_at: { type: "DATETIME" },
     deleted_at:{ type: "DATETIME" }
-})
+},{} ,false,10)
 
 
 // int
@@ -81,6 +82,36 @@ export  const findUserMd = (body)=> {
     return UsersModel.findArr(where)
 }
 
+
+
+// export  const getDetailUserMd = ( body)=> {
+//     //  neu theo id
+//     // caches 10s
+//     //  neu tim theo id do nua  thi lay tu caches
+//     // neu k co lai caches lai
+//     const where = {id: 2}
+//     const result = findIDtoCache(UsersModel.table_name,where, UsersModel)
+//         .then((data) => {
+//             return(data)
+//         })
+//     return result
+// }
+
+export  const getDetailUserMd = ( body)=> {
+    //  neu theo id
+    // caches 10s
+    //  neu tim theo id do nua  thi lay tu caches
+    // neu k co lai caches lai
+    const where = {id: 2}
+    const data = UsersModel.findIDtoCache(where)
+    return data
+}
+
+export const upDateUserMd = (dataUpdate) => {
+    const userUpdated = UsersModel.updateDataCache(dataUpdate)
+
+}
+
 export  const findUser = (body)=> {
     return UsersModel.findOneAndUpdate(attr , where,transaction)
 }
@@ -108,10 +139,9 @@ export function parseWhere(where){
     }
     return extractedValues
 }
-// export  const getDetailBoV2WorkGroupMd = ( where,transaction =false)=> {
-//     const where2 = {age :{[Op.and] : [{[Op.gt] : 1 }, {[Op.lt] : 20 }]}}
-//     return Bo_v2_work_group.findItem( where2 ,transaction)
-// }
+export  const getDetailBoV2WorkGroupMd = ( where,transaction =false)=> {
+    return UsersModel.findItem( where ,transaction)
+}
 // getDetailBoV2WorkGroupMd([{$to_age :1 , $end_age : 20}])
 
 
@@ -158,9 +188,7 @@ export  const getListUser = ( where,transaction=false,limit=false,page=false,ord
  * @param attr {[]|any}
  * @return {Promise<City>}
  */
-export  const getDetailUserMd = ( where,transaction =false , attr =false)=> {
-    return UsersModel.findItem( where ,transaction ,attr)
-}
+
 
 
 

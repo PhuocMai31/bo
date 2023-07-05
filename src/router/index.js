@@ -2,7 +2,7 @@ import httpRouterWeb from "./web";
 import httpRouterApp from "./app";
 import {getLog, popData, setLog} from "@controller/devController";
 import {dateNowDataBase} from "@util";
-import {addUserP, findUserP} from "@controller/controllerP/usersPController";
+import {addUserP, cacheIDp, findUserP, updateIDp} from "@controller/controllerP/usersPController";
 
 export default function router(app) {
   httpRouterWeb.runRouter(app);
@@ -17,6 +17,8 @@ export default function router(app) {
   app.get("/setLog",setLog)
   app.get("/P", addUserP)
   app.get("/find-user-with-field-between", findUserP)
+  app.get("/cahe-id-user", cacheIDp)
+  app.get("/cache-id-update", updateIDp)
 
   app.get("/getUpdateGit",(req ,res)=>{res.json({a ,
 })})

@@ -1,13 +1,16 @@
 import {Op} from "sequelize";
 import {countBoV2ExchangeMd, sequelize} from "@model";
-
-export const findDataWithFieldandBetween = async (model,field,valueStartOfField,valueEndOfField) => {
+import {client} from "@config/redisConnect";
+import UsersModel from "../../db/modelsP/usersModel";
+import redis from'ioredis'
+import {rdGet} from "@lib";
+export const findDataWithFieldandBetween = async (model, field, valueStartOfField, valueEndOfField) => {
     const regexDate = /^\d{4}-\d{2}-\d{2}$/;
     const regexVarChar = /[a-zA-Z]/;
     const regexNumber = /^\d+$/;
-    if(regexDate.test(valueStartOfField)){
+    if (regexDate.test(valueStartOfField)) {
         console.log(1)
-        if (!valueEndOfField){
+        if (!valueEndOfField) {
             var result = await model.findAll({
                 where: {
                     [field]: {
@@ -17,16 +20,16 @@ export const findDataWithFieldandBetween = async (model,field,valueStartOfField,
                 }
             });
         } else {
-                var result = await model.findAll({
-                    where: {
-                        [field]: {
-                            [Op.gte]: `${valueStartOfField}`,
-                            [Op.lte]: `${valueEndOfField}`
-                        }
+            var result = await model.findAll({
+                where: {
+                    [field]: {
+                        [Op.gte]: `${valueStartOfField}`,
+                        [Op.lte]: `${valueEndOfField}`
                     }
-                });
-            }
-    } else if(regexVarChar.test(valueStartOfField)){
+                }
+            });
+        }
+    } else if (regexVarChar.test(valueStartOfField)) {
         console.log(2)
         var result = await model.findAll({
             where: {
@@ -35,16 +38,16 @@ export const findDataWithFieldandBetween = async (model,field,valueStartOfField,
                 }
             }
         });
-    } else if(regexNumber.test(valueStartOfField)){
+    } else if (regexNumber.test(valueStartOfField)) {
         console.log(3)
-        if(!valueEndOfField){
+        if (!valueEndOfField) {
             const result = await model.findAll({
                 attributes: [field],
                 order: [[field, 'DESC']],
                 limit: 1,
             });
             valueEndOfField = result[0].age
-            console.log(valueEndOfField,99)
+            console.log(valueEndOfField, 99)
         }
         var result = await model.findAll({
             where: {
@@ -77,7 +80,7 @@ export const transformConditionToQuery = (where) => {
             }
             groupedItems[groupKey].end = value || new Date().toISOString();
         } else {
-            result.push({ [key]: value });
+            result.push({[key]: value});
         }
     }
     for (const groupKey in groupedItems) {
@@ -88,31 +91,30 @@ export const transformConditionToQuery = (where) => {
         });
     }
     let query = {};
-    for (const key in where){
+    for (const key in where) {
         if (!key.startsWith("$to_") && !key.startsWith("$end_")) {
             query[key] = where[key]
         }
     }
     var extractedValues = []
-    for (let i = 0; i< result.length; i++){
+    for (let i = 0; i < result.length; i++) {
         for (const key in result[i]) {
             if (key.startsWith("$to_")) {
                 const value = key.substring(4);
                 extractedValues.push(value);
                 const startKey = result[i][key];
                 const endKey = result[i][`$end_${value}`];
-                const regexDate = /^\d{4}-\d{2}-\d{2}.*/ ;
+                const regexDate = /^\d{4}-\d{2}-\d{2}.*/;
                 const regexDateTest = regexDate.test(endKey)
-                if (regexDateTest && typeof (startKey) === "undefined"){
+                if (regexDateTest && typeof (startKey) === "undefined") {
                     query[value] = {
                         [Op.lte]: endKey
                     }
-                }
-                else if(endKey && startKey){
+                } else if (endKey && startKey) {
                     query[value] = {
                         [Op.between]: [startKey, endKey]
                     }
-                } else  {
+                } else {
                     query[value] = {
                         [Op.gte]: startKey
                     }
@@ -122,3 +124,21 @@ export const transformConditionToQuery = (where) => {
     }
     return query
 };
+
+export async function findIDtoCache(tablename,where, model){
+    console.log(where?.id)
+    let result = await client.get(`${tablename}_id`)
+    if(!result){
+        const expireSecond = 10
+        let data = await model.findOne({where})
+        if(data.id !== where.id){
+            data = null
+        }
+        const jsonValue = JSON.stringify(data)
+        await client.set(`${tablename}_id`, jsonValue)
+        await client.expire(`${tablename}_id`, expireSecond)
+        return data
+    }
+    const dataInCache = await client.get(`${tablename}_id`)
+    return JSON.parse(dataInCache)
+}
