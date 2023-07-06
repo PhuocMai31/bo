@@ -27,7 +27,7 @@ UsersModel.init("users",{
     created_at: { type: "DATETIME" },
     updated_at: { type: "DATETIME" },
     deleted_at:{ type: "DATETIME" }
-},{} ,false,10)
+},{} , 300)
 
 
 // int
@@ -49,12 +49,51 @@ export  const addUserMd = (params, transaction = false)=> {
 // }
 // const where = { $to_age : 10 , $end_age : 20 ,$to_birday : "2022-01-02 00:00:00" ,  $like_name : "nam"}
 
+// export  const findUserMd = (body)=> {
+//     // const where1 = [{ $to_age: 20, $end_age: 23}, {$to_created_at: "2023-07-03 00:00:00", $end_created_at: "2023-07-04 00:00:00" }];
+//     const where1 = { $to_age : 21 , $end_age : 23 ,$to_created_at: "2023-07-03", $end_created_at: "2023-07-05T12:34:56.789Z"  }
+//     const where2 ={
+//         age: 22,
+//         $end_created_at: "2023-07-05T12:34:56.789Z"
+//     }
+//     const where3 ={
+//         age: 22,
+//         id: { [Op.between]: [ 1, 2 ] }
+//     }
+//     const where4 = {
+//         age: [21, 22],
+//         id: { [Op.between]: [ 1, 2 ] }
+//     }
+//     const where5 = {
+//         $to_age : 21 ,$to_created_at: "2023-07-03", $end_created_at: "2023-07-05T12:34:56.789Z"
+//     }
+//     const where6 ={
+//         age: [21, 22],
+//         $to_created_at: "2023-07-05T12:34:56.789Z"
+//     }
+//     const whereT = {
+//         age: {
+//             [Op.gte]: 21
+//         },
+//         id: { [Op.between]: [ 1, 2 ] }
+//     }
+//     const where = transformConditionToQuery(where6)
+//     console.log(where,777)
+//     return UsersModel.findArr(where)
+// }
+
 export  const findUserMd = (body)=> {
     // const where1 = [{ $to_age: 20, $end_age: 23}, {$to_created_at: "2023-07-03 00:00:00", $end_created_at: "2023-07-04 00:00:00" }];
-    const where1 = { $to_age : 21 , $end_age : 23 ,$to_created_at: "2023-07-03", $end_created_at: "2023-07-05T12:34:56.789Z"  }
+    const where1 = { $to_age : 21 , $end_age : 23 ,$to_created_at: "2023-07-03", $end_created_at: "2023-07-05T12:34:56.789Z" }
+    // gán collumn sau $to_ hoặc $end_
+    // nếu phần tử kiểu số không có $to và $end thì lấy từ đó đên lớn hơn
+    // nếu phần tử kiểu ngày tháng chỉ có $end_ sẽ lấy những ngày trước ngày đó
+    // nếu phần tử kiểu ngày tháng chỉ có  $to_ sẽ lấy những ngày sau ngày đó
+    //  nếu phần tử muốn tìm là kiểu dữ liệu varchar thì bế cả tên comlum vào
     const where2 ={
-        age: 22,
-        $end_created_at: "2023-07-05T12:34:56.789Z"
+        $to_age: 22,
+        $end_created_at: "2023-07-05T12:34:56.789Z",
+        $like_name: "nodejs"
     }
     const where3 ={
         age: 22,
@@ -65,7 +104,9 @@ export  const findUserMd = (body)=> {
         id: { [Op.between]: [ 1, 2 ] }
     }
     const where5 = {
-        $to_age : 21 ,$to_created_at: "2023-07-03", $end_created_at: "2023-07-05T12:34:56.789Z"
+        $to_age : 22 ,
+        $to_created_at: "2023-07-01", $end_created_at: "2023-07-05T12:34:56.789Z",
+        name: "nodejs"
     }
     const where6 ={
         age: [21, 22],
@@ -77,11 +118,8 @@ export  const findUserMd = (body)=> {
         },
         id: { [Op.between]: [ 1, 2 ] }
     }
-    const where = transformConditionToQuery(where6)
-    console.log(where,777)
-    return UsersModel.findArr(where)
+    return UsersModel.findArr(where2)
 }
-
 
 
 // export  const getDetailUserMd = ( body)=> {
@@ -103,7 +141,7 @@ export  const getDetailUserMd = ( body)=> {
     //  neu tim theo id do nua  thi lay tu caches
     // neu k co lai caches lai
     const where = {id: 2}
-    const data = UsersModel.findIDtoCache(where)
+    const data = UsersModel.findItem(where)
     return data
 }
 
@@ -111,7 +149,7 @@ export const upDateUserMd = (dataUpdate) => {
     const userUpdated = UsersModel.updateDataCache(dataUpdate)
 }
 
-export  const findUser = (body)=> {
+export  const updateUser = (body)=> {
     return UsersModel.findOneAndUpdate(attr , where,transaction)
 }
 

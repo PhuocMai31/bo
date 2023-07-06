@@ -1,4 +1,5 @@
 import {deserialize} from "./serialize";
+import {Op} from "sequelize";
 
 export const sumArr = (arr, key) => {
   let sum = 0;
@@ -223,9 +224,75 @@ export const filterArrNotSame = (arr, arr2) => {
  * @param value
  */
 export  const pushNotSame = (arr , value)=> {
-
   for (let arrElement of arr) {
     if(arrElement == value) return
   }
   arr.push(value)
 }
+
+// export const reverseWhere = (where) => {
+//   const result = [];
+//   const groupedItems = {};
+//   for (const key in where) {
+//     const value = where[key];
+//     if (key.startsWith("$to_")) {
+//       const groupKey = key.substring(4);
+//       if (!(groupKey in groupedItems)) {
+//         groupedItems[groupKey] = {};
+//       }
+//       groupedItems[groupKey].to = value;
+//     } else if (key.startsWith("$end_")) {
+//       const groupKey = key.substring(5);
+//       if (!(groupKey in groupedItems)) {
+//         groupedItems[groupKey] = {};
+//       }
+//       groupedItems[groupKey].end = value || new Date().toISOString();
+//     } else {
+//       result.push({[key]: value});
+//     }
+//   }
+//   for (const groupKey in groupedItems) {
+//     const groupItem = groupedItems[groupKey];
+//     result.push({
+//       [`$to_${groupKey}`]: groupItem.to,
+//       [`$end_${groupKey}`]: groupItem.end
+//     });
+//   }
+//   let query = {};
+//   for (const key in where) {
+//     if (!key.startsWith("$to_") && !key.startsWith("$end_")) {
+//       query[key] = where[key]
+//     }
+//   }
+//   console.log(result,789)
+//   var extractedValues = []
+//   for (let i = 0; i < result.length; i++) {
+//     for (const key in result[i]) {
+//       if (key.startsWith("$to_")) {
+//         const value = key.substring(4);
+//         extractedValues.push(value);
+//         const startKey = result[i][key];
+//         const endKey = result[i][`$end_${value}`];
+//         const regexDate = /^\d{4}-\d{2}-\d{2}.*/;
+//         const regexDateTest = regexDate.test(endKey)
+//         if (regexDateTest && typeof (startKey) === "undefined") {
+//           query[value] = {
+//             [Op.lte]: endKey
+//           }
+//         } else if (endKey && startKey) {
+//           query[value] = {
+//             [Op.between]: [startKey, endKey]
+//           }
+//         } else {
+//           query[value] = {
+//             [Op.gte]: startKey
+//           }
+//         }
+//       }
+//       // else if (key.startsWith("$like_")){
+//       //   query[value]
+//       // }
+//     }
+//   }
+//   return query
+// };

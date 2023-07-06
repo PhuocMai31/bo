@@ -1,9 +1,10 @@
 import {sequelize} from "./main";
-import {dateNowDataBase, objIsEmpty, validNumber} from "@util";
+import {dateNowDataBase, getDateString, objIsEmpty, reverseWhere, validNumber} from "@util";
 import {Op} from "sequelize";
 import {cacheRedis, rdDel} from "@lib";
 import {client} from "@config/redisConnect";
 import {lowerFirst} from "lodash/string";
+
 
 class ModelBase {
     constructor() {
@@ -12,7 +13,7 @@ class ModelBase {
     static table_name;
     static caches;
 
-    static init(table_name, attr, opts = {}, caches = false) {
+    static init(table_name, attr, opts = {}, caches) {
         this.caches = caches;
         this.table_name = table_name;
         if (sequelize)
@@ -104,6 +105,8 @@ class ModelBase {
         group,
         attributes
     ) {
+        var where = this.reverseWhere(where)
+        console.log(where,123)
         const opts = {where, raw: true};
         if (!opts.where.deleted_at) opts.where.deleted_at = null;
         if (validNumber(limit)) opts.limit = Number(limit);
@@ -162,6 +165,7 @@ class ModelBase {
      */
     static async findItem(where, transaction , attr = false, order = false) {
         const opts = {where: {deleted_at: null, ...where}, raw: true, attributes: attr, order};
+        await this.findIDtoCache(where)
         if (transaction) opts.transaction = transaction;
         if (where.deleted_at === false) delete where.deleted_at
         if (this.caches && where?.id && Object.keys(where).length === 1) {
@@ -169,64 +173,27 @@ class ModelBase {
                 this.model.findOne(opts)
             );
         }
-        let result = await client.get(`${this.table_name}_id`)
-        if(!result){
-            const expireSecond = 5
-            let data = await this.model.findOne({where})
-            if(data.id !== where.id){
-                data = null
-            }
-            console.log(data,333)
-            const jsonValue = JSON.stringify(data)
-            await client.set(`${this.table_name}_id`, jsonValue)
-            await client.expire(`${this.table_name}_id`, expireSecond)
-            return data
-        }
-        const dataInCache = await client.get(`${this.table_name}_id`)
-        return JSON.parse(dataInCache)
         return this.model.findOne(opts);
     }
 
     static async findIDtoCache(where){
-        let result = await client.get(`${this.table_name}_id`)
+        let result = await client.get(`${this.table_name}_data_${getDateString()}`)
         if(!result){
-            const expireSecond = 5
+            const expireSecond = this.caches
             let data = await this.model.findOne({where})
             if(data.id !== where.id){
                 data = null
             }
-            console.log(data,333)
             const jsonValue = JSON.stringify(data)
-            await client.set(`${this.table_name}_id`, jsonValue)
-            await client.expire(`${this.table_name}_id`, expireSecond)
+            await client.set(`${this.table_name}_data_${getDateString()}`, jsonValue)
+            await client.expire(`${this.table_name}_data_${getDateString()}`, expireSecond)
             return data
         }
-        const dataInCache = await client.get(`${this.table_name}_id`)
+        const dataInCache = await client.get(`${this.table_name}_data_${getDateString()}`)
         return JSON.parse(dataInCache)
     }
 
-    static async updateDataCache(dataUpdate) {
-        console.log(dataUpdate)
-        // let result = await client.get(`${this.table_name}_id`)
-        // if (result){
-        //     console.log(result)
-            dataUpdate.updated_at = new Date()
-            if (dataUpdate.delete_at) dataUpdate.delete_at = null
-            console.log(dataUpdate,777)
-            await this.model.update(dataUpdate,
-                {
-                    where: {id: dataUpdate.id},
-                }
-            );
-            const userUpdated = await this.model.findOne({
-                where: {id: dataUpdate.id},
-            })
-            const expireSecond = 5
-            await client.set(`${this.table_name}_id`, JSON.stringify(userUpdated))
-            await client.expire(`${this.table_name}_id`, expireSecond)
-            return userUpdated
-        // }
-    }
+
 
     /**
      *
@@ -277,6 +244,7 @@ class ModelBase {
             const update = await this.model.update(attr, {where, transaction});
             if (update[0] === 1)
                 item = {...data, ...attr, updated_at: dateNowDataBase(true)};
+            await this.updateDataCacheWith2field(where)
         }
         return data
             ? {
@@ -284,6 +252,35 @@ class ModelBase {
                 before: data,
             }
             : {item: null, before: null};
+    }
+
+
+    static async updateDataCache(dataUpdate) {
+        console.log(dataUpdate)
+        dataUpdate.updated_at = new Date()
+        if (dataUpdate.delete_at) dataUpdate.delete_at = null
+        await this.model.update(dataUpdate,
+            {
+                where: {id: dataUpdate.id},
+            }
+        );
+        const userUpdated = await this.model.findOne({
+            where: {id: dataUpdate.id},
+        })
+        const expireSecond = this.caches
+        await client.set(`${this.table_name}_data_${getDateString()}`, JSON.stringify(userUpdated))
+        await client.expire(`${this.table_name}_data_${getDateString()}`, expireSecond)
+        return userUpdated
+    }
+
+    static async updateDataCacheWith2field(where) {
+        const userUpdated = await this.model.findOne({
+            where
+        })
+        const expireSecond = this.caches
+        await client.set(`${this.table_name}_data_${getDateString()}`, JSON.stringify(userUpdated))
+        await client.expire(`${this.table_name}_data_${getDateString()}`, expireSecond)
+        return userUpdated
     }
 
     /**
@@ -317,6 +314,73 @@ class ModelBase {
         rdDel(table_name + "_" + id);
     };
 
+    static reverseWhere = (where) => {
+        const result = [];
+        const groupedItems = {};
+        for (const key in where) {
+            const value = where[key];
+            if (key.startsWith("$to_")) {
+                const groupKey = key.substring(4);
+                if (!(groupKey in groupedItems)) {
+                    groupedItems[groupKey] = {};
+                }
+                groupedItems[groupKey].to = value;
+            } else if (key.startsWith("$end_")) {
+                const groupKey = key.substring(5);
+                if (!(groupKey in groupedItems)) {
+                    groupedItems[groupKey] = {};
+                }
+                groupedItems[groupKey].end = value || new Date().toISOString();
+            } else {
+                result.push({[key]: value});
+            }
+        }
+        for (const groupKey in groupedItems) {
+            const groupItem = groupedItems[groupKey];
+            result.push({
+                [`$to_${groupKey}`]: groupItem.to,
+                [`$end_${groupKey}`]: groupItem.end
+            });
+        }
+        let query = {};
+        for (const key in where) {
+            if (!key.startsWith("$to_") && !key.startsWith("$end_") && !key.startsWith("$like_")) {
+                query[key] = where[key]
+            }
+        }
+        var extractedValues = []
+        for (let i = 0; i < result.length; i++) {
+            for (const key in result[i]) {
+                if (key.startsWith("$to_")) {
+                    const value = key.substring(4);
+                    extractedValues.push(value);
+                    const startKey = result[i][key];
+                    const endKey = result[i][`$end_${value}`];
+                    const regexDate = /^\d{4}-\d{2}-\d{2}.*/;
+                    const regexDateTest = regexDate.test(endKey)
+                    if (regexDateTest && typeof (startKey) === "undefined") {
+                        query[value] = {
+                            [Op.lte]: endKey
+                        }
+                    } else if (endKey && startKey) {
+                        query[value] = {
+                            [Op.between]: [startKey, endKey]
+                        }
+                    } else {
+                        query[value] = {
+                            [Op.gte]: startKey
+                        }
+                    }
+                } else if (key.startsWith("$like_")){
+                    const value = key.substring(6);
+                    query[value] = {
+                        [Op.like]: result[i][key]
+                    }
+                }
+            }
+        }
+        return query
+    };
 
 }
 

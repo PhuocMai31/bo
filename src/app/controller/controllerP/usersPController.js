@@ -43,3 +43,12 @@ export const updateIDp = async function(req,res){
         console.log(error)
     }
 }
+
+// export const updateUser = async function(req,res){
+//     try {
+//         const userUpdate = await updateUser(req.body)
+//         res.send("update")
+//     } catch (error){
+//         console.log(error)
+//     }
+// }
